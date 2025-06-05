@@ -11,6 +11,15 @@ BASE_FIELDS = [
     "base_and_all_options_value",
     "naics_code",
     "naics_code_description",
+    "award_type",
+    "reason_for_modification",
+    "type_of_contract",
+    "labor_standards",
+    "additional_reporting",
+    "product_or_service_code",
+    "product_or_service_code_description",
+    "type_of_set_aside",
+    "type_of_set_aside_source",
 ]
 
 def parse_urls(csv_path: Path):
@@ -41,6 +50,22 @@ def scrape_page(url: str):
         if tag and tag.has_attr("value"):
             return tag["value"].strip()
         return ""
+    def get_text(field_id: str):
+        tag = soup.find(id=field_id)
+        return tag.get_text(strip=True) if tag else ""
+    def get_select(field_id: str):
+        sel = soup.find(id=field_id)
+        if sel:
+            opt = sel.find("option", selected=True)
+            if opt:
+                return opt.get_text(strip=True)
+        return ""
+    def get_multiselect(field_id: str):
+        sel = soup.find(id=field_id)
+        if sel:
+            vals = [opt.get_text(strip=True) for opt in sel.find_all("option") if opt.has_attr("selected")]
+            return ";".join(vals)
+        return ""
     data = {
         "url": url,
         "action_obligation": get_value("obligatedAmount"),
@@ -48,6 +73,15 @@ def scrape_page(url: str):
         "base_and_all_options_value": get_value("ultimateContractValue"),
         "naics_code": get_value("principalNAICSCode"),
         "naics_code_description": get_value("NAICSCodeDescription"),
+        "award_type": get_text("displayAwardType"),
+        "reason_for_modification": get_value("reasonForModification"),
+        "type_of_contract": get_select("typeOfContractPricing"),
+        "labor_standards": get_select("laborStandards"),
+        "additional_reporting": get_multiselect("listOfAdditionalReportingValues"),
+        "product_or_service_code": get_value("productOrServiceCode"),
+        "product_or_service_code_description": get_value("productOrServiceCodeDescription"),
+        "type_of_set_aside": get_select("typeOfSetAside"),
+        "type_of_set_aside_source": get_value("typeOfSetAsideSource"),
     }
 
     def parse_section(section):
@@ -101,6 +135,15 @@ def main():
                 "base_and_all_options_value": "ERROR",
                 "naics_code": "ERROR",
                 "naics_code_description": "ERROR",
+                "award_type": "ERROR",
+                "reason_for_modification": "ERROR",
+                "type_of_contract": "ERROR",
+                "labor_standards": "ERROR",
+                "additional_reporting": "ERROR",
+                "product_or_service_code": "ERROR",
+                "product_or_service_code_description": "ERROR",
+                "type_of_set_aside": "ERROR",
+                "type_of_set_aside_source": "ERROR",
             }
         socio_fields.update(k for k in data.keys() if k not in BASE_FIELDS)
         rows.append(data)
