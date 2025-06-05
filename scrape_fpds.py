@@ -56,7 +56,11 @@ def scrape_page(url: str):
             fid = cb.get("id")
             if not fid:
                 continue
-            data[fid] = cb.get("value", "")
+            hid = socio.find("input", {"id": f"pJS{fid}"})
+            if hid and hid.has_attr("value"):
+                data[fid] = hid["value"].strip()
+            else:
+                data[fid] = "true" if cb.has_attr("checked") else "false"
     return data
 
 def main():
