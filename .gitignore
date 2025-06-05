@@ -1,0 +1,4 @@
+__pycache__/
+sample_output.csv
+*.pyc
+run.log
