@@ -50,17 +50,36 @@ def scrape_page(url: str):
         "naics_code_description": get_value("NAICSCodeDescription"),
     }
 
-    socio = soup.find(id="socio")
-    if socio:
-        for cb in socio.find_all("input", {"type": "checkbox"}):
+    def parse_section(section):
+        fields = {}
+        if not section:
+            return fields
+        for cb in section.find_all("input", {"type": "checkbox"}):
             fid = cb.get("id")
             if not fid:
                 continue
-            hid = socio.find("input", {"id": f"pJS{fid}"})
+            tr = cb.find_parent("tr")
+            label = ""
+            if tr:
+                cells = tr.find_all("td")
+                if cells:
+                    label = cells[-1].get_text(strip=True)
+            if not label:
+                label = cb.get("title", fid)
+            hid = section.find("input", {"id": f"pJS{fid}"})
             if hid and hid.has_attr("value"):
-                data[fid] = hid["value"].strip()
+                fields[label] = hid["value"].strip()
             else:
-                data[fid] = "true" if cb.has_attr("checked") else "false"
+                fields[label] = "true" if cb.has_attr("checked") else "false"
+        return fields
+
+    socio = soup.find(id="socio")
+    cert = soup.find(id="cert")
+
+    for name, value in parse_section(socio).items():
+        data[name] = value
+    for name, value in parse_section(cert).items():
+        data[name] = value
     return data
 
 def main():
