@@ -5,7 +5,7 @@ This project contains a simple scraper for FPDS contract URLs.
 ## Requirements
 
 - Python 3.8+
-- Packages listed in `requirements.txt` (`requests` and `beautifulsoup4`)
+- Packages listed in `requirements.txt` (`aiohttp` and `beautifulsoup4`)
 
 Install dependencies with:
 

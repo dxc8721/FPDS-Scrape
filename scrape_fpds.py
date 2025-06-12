@@ -1,7 +1,7 @@
 import csv
+import asyncio
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
-import requests
+import aiohttp
 from bs4 import BeautifulSoup
 import logging
 
@@ -56,10 +56,11 @@ def parse_urls(csv_path: Path):
         urls.pop(0)
     return urls
 
-def scrape_page(url: str):
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
+async def scrape_page(session: aiohttp.ClientSession, url: str):
+    async with session.get(url, timeout=30) as r:
+        r.raise_for_status()
+        text = await r.text()
+    soup = BeautifulSoup(text, "html.parser")
     def get_value(field_id: str):
         tag = soup.find(id=field_id)
         if tag and tag.has_attr("value"):
@@ -137,7 +138,7 @@ def scrape_page(url: str):
         data[name] = value
     return data
 
-def main():
+async def main():
     import sys
     csv_path = Path(sys.argv[1])
     out_path = Path(sys.argv[2])
@@ -146,9 +147,9 @@ def main():
     rows = []
     socio_fields = set()
 
-    def scrape_or_error(url: str):
+    async def scrape_or_error(session: aiohttp.ClientSession, url: str):
         try:
-            return scrape_page(url)
+            return await scrape_page(session, url)
         except Exception:
             logging.exception("Failed to scrape %s", url)
             return {
@@ -175,9 +176,11 @@ def main():
                 "legal_business_name": "ERROR",
             }
 
-    # use more concurrent workers for faster scraping
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        for idx, data in enumerate(executor.map(scrape_or_error, urls), 1):
+    connector = aiohttp.TCPConnector(limit=10)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        tasks = [scrape_or_error(session, url) for url in urls]
+        for idx, coro in enumerate(asyncio.as_completed(tasks), 1):
+            data = await coro
             socio_fields.update(k for k in data.keys() if k not in BASE_FIELDS)
             rows.append(data)
             if idx % 50 == 0:
@@ -192,4 +195,4 @@ def main():
             writer.writerow({fn: row.get(fn, "") for fn in fieldnames})
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
