@@ -1,5 +1,6 @@
 import csv
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 
@@ -130,11 +131,12 @@ def main():
 
     rows = []
     socio_fields = set()
-    for idx, url in enumerate(urls, 1):
+
+    def scrape_or_error(url: str):
         try:
-            data = scrape_page(url)
+            return scrape_page(url)
         except Exception:
-            data = {
+            return {
                 "url": url,
                 "action_obligation": "ERROR",
                 "total_action_obligation": "ERROR",
@@ -154,10 +156,13 @@ def main():
                 "type_of_set_aside": "ERROR",
                 "type_of_set_aside_source": "ERROR",
             }
-        socio_fields.update(k for k in data.keys() if k not in BASE_FIELDS)
-        rows.append(data)
-        if idx % 50 == 0:
-            print(f"Processed {idx}/{len(urls)}")
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        for idx, data in enumerate(executor.map(scrape_or_error, urls), 1):
+            socio_fields.update(k for k in data.keys() if k not in BASE_FIELDS)
+            rows.append(data)
+            if idx % 50 == 0:
+                print(f"Processed {idx}/{len(urls)}")
 
     fieldnames = BASE_FIELDS + sorted(socio_fields)
 
