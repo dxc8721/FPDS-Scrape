@@ -3,6 +3,14 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
+import logging
+
+# configure logging
+logging.basicConfig(
+    filename="run.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 
 # fields that are always captured from each page
 BASE_FIELDS = [
@@ -24,6 +32,9 @@ BASE_FIELDS = [
     "product_or_service_code_description",
     "type_of_set_aside",
     "type_of_set_aside_source",
+    "idv_type_of_set_aside",
+    "unique_entity_id",
+    "legal_business_name",
 ]
 
 def parse_urls(csv_path: Path):
@@ -89,6 +100,9 @@ def scrape_page(url: str):
         "product_or_service_code_description": get_value("productOrServiceCodeDescription"),
         "type_of_set_aside": get_select("typeOfSetAside"),
         "type_of_set_aside_source": get_value("typeOfSetAsideSource"),
+        "idv_type_of_set_aside": get_value("idvTypeOfSetAside"),
+        "unique_entity_id": get_value("UEINumber"),
+        "legal_business_name": get_value("vendorName"),
     }
 
     def parse_section(section):
@@ -136,6 +150,7 @@ def main():
         try:
             return scrape_page(url)
         except Exception:
+            logging.exception("Failed to scrape %s", url)
             return {
                 "url": url,
                 "action_obligation": "ERROR",
@@ -155,6 +170,9 @@ def main():
                 "product_or_service_code_description": "ERROR",
                 "type_of_set_aside": "ERROR",
                 "type_of_set_aside_source": "ERROR",
+                "idv_type_of_set_aside": "ERROR",
+                "unique_entity_id": "ERROR",
+                "legal_business_name": "ERROR",
             }
 
     with ThreadPoolExecutor(max_workers=5) as executor:
