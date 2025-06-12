@@ -175,7 +175,8 @@ def main():
                 "legal_business_name": "ERROR",
             }
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    # use more concurrent workers for faster scraping
+    with ThreadPoolExecutor(max_workers=10) as executor:
         for idx, data in enumerate(executor.map(scrape_or_error, urls), 1):
             socio_fields.update(k for k in data.keys() if k not in BASE_FIELDS)
             rows.append(data)
